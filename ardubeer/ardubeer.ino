@@ -119,7 +119,7 @@ void flowpulse() {
 
 void endfill() {
   // Stop beer flow:
-  filling = false;
+  measureflow = false;
   analogWrite(flowLED, 0);              // turn off flow light
   digitalWrite(beerfillPin, LOW);       // turn off beer pin
 
