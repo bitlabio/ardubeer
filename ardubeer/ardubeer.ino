@@ -1,6 +1,6 @@
 /*
 
-ARDUBEER v0.2  
+ARDUBEER v1.1  
 
 Client: 
 
@@ -37,8 +37,8 @@ int powerLED = 9;     // ON WHEN SYSTEM HAS POWER
 int readyLED = 6;     // ON WHEN SYSTEM IS READY FOR A NEW FILL
 int flowLED = 5;      // ON WHEN SYSTEM IS BUSY FILLING
 
-bool filling        = 0; //0 = not filling, 1 = filling.
-
+bool disableButton        = 0; //0 = not filling, 1 = filling.
+bool measureflow    = 0;
 /*------------------------------------------------------------------------------------*/
 
 void setup() {
@@ -47,15 +47,20 @@ void setup() {
   pinMode(powerLED, OUTPUT);
   pinMode(readyLED, OUTPUT);
   pinMode(flowLED, OUTPUT);
+  pinMode(beerfillPin,OUTPUT);      
+  pinMode(liftSolenoidPin,OUTPUT);  
+  pinMode(co2Pin,OUTPUT);   
+
+  //DEFAULT POSITIONS
+  digitalWrite(liftSolenoidPin, HIGH); //keep lift solenoid high at the start
+  digitalWrite(beerfillPin, LOW);      // close beer
 
   analogWrite(powerLED, 100); //0-255 brightness
   analogWrite(readyLED, 100);
   analogWrite(flowLED, 0);
 
 
-  pinMode(beerfillPin,OUTPUT);      
-  pinMode(liftSolenoidPin,OUTPUT);  
-  pinMode(co2Pin,OUTPUT);            
+         
 
   // beer flow sensor:
   pinMode(flowPulsePin, INPUT_PULLUP); 
@@ -67,10 +72,12 @@ void setup() {
 /*------------------------------------------------------------------------------------*/
 
 void loop() {
-  if (filling == false) {
+  if (disableButton == false) {
     int buttonstate = digitalRead(startButtonPin);
     if (buttonstate == 1) {
+      disableButton = true; //disables the button for now.
       startfill();
+
     }
   }
 }
@@ -80,31 +87,29 @@ void loop() {
 void startfill() {
     // This function is called when the button is pushed to start the bottle fill process.
 
-    digitalWrite(liftSolenoidPin, HIGH);  // open valve
+    digitalWrite(liftSolenoidPin, HIGH);  // lift solenoid open
+    delay(6000);                          // delay 6 sec
     digitalWrite(co2Pin, HIGH);           // open CO2
-
-    delay(5000);                          // wait 5 sec
-
+    delay(6000);                          // delay 6 sec
     digitalWrite(co2Pin, LOW);            // close CO2
-    digitalWrite(liftSolenoidPin, LOW);   // close valve
-
     // start beer fill
-
-    digitalWrite(beerfillPin, HIGH);
-    filling = true;
+    digitalWrite(beerfillPin, HIGH);      // open beer
+    pulsecount = 0;                       // reset counter;
+    measureflow = true;                   // disables button. and starts to measure flow
+    
 }
 
 /*------------------------------------------------------------------------------------*/
 
 void flowpulse() {
   // This function is called each time the flow pulse is sensed.
-  if (filling == true) {
+  if (measureflow == true) {
     pulsecount++;
     analogWrite(flowLED, 25+((pulsecount%2)*75)); //should toggle between two brightness when filling on each pulse.
     if (pulsecount >= 12760 ) {
       // beer should be full now.
-      pulsecount = 0; // zero counter
-      
+      pulsecount = 0; // zero counter   
+      measureflow = false;   
       endfill();      // bottle full.
     }
   }
@@ -119,7 +124,8 @@ void endfill() {
   digitalWrite(beerfillPin, LOW);       // turn off beer pin
 
   // After filling up do this:  
-  delay(6000);                          // wait a bit
-  digitalWrite(liftSolenoidPin, LOW);   // close pneumatics.
-  // delay(3000);                       // if needed uncomment.
+  delay(6000);                          // delay 6 sec
+  digitalWrite(liftSolenoidPin, LOW);   //  lift solenoid close (lower bottle)
+  delay(3000);                          // give it time to lower.
+  disableButton = false;
 }
