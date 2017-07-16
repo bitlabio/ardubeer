@@ -1,6 +1,6 @@
 /*
 
-ARDUBEER v1.1  
+ARDUBEER v1.2  
 
 Client: 
 
@@ -42,7 +42,8 @@ bool measureflow    = 0;
 /*------------------------------------------------------------------------------------*/
 
 void setup() {
-
+  Serial.begin(9600);
+  Serial.println("booting");
   //LEDS
   pinMode(powerLED, OUTPUT);
   pinMode(readyLED, OUTPUT);
@@ -67,18 +68,25 @@ void setup() {
   
   // this should run the flowpulse() function each time a pulse is detected.
   attachInterrupt(digitalPinToInterrupt(flowPulsePin), flowpulse, CHANGE); 
+  Serial.println("ready");
 }
 
 /*------------------------------------------------------------------------------------*/
-
+int loopcounter = 0;
 void loop() {
-  if (disableButton == false) {
-    int buttonstate = digitalRead(startButtonPin);
+  int buttonstate = digitalRead(startButtonPin);
+  if (disableButton == false) {    
     if (buttonstate == 1) {
+      Serial.println("button pressed");
       disableButton = true; //disables the button for now.
       startfill();
-
     }
+  }
+  
+  delay(1);  
+  loopcounter++;
+  if (loopcounter%1000) {
+    Serial.println("in loop..");
   }
 }
 
@@ -86,12 +94,27 @@ void loop() {
 
 void startfill() {
     // This function is called when the button is pushed to start the bottle fill process.
+    Serial.println("starting fill");
 
+    Serial.println("lifting bottle");
     digitalWrite(liftSolenoidPin, HIGH);  // lift solenoid open
+    
+    Serial.println("waiting 6 seconds");
     delay(6000);                          // delay 6 sec
+
+    Serial.println("open CO2 ");
     digitalWrite(co2Pin, HIGH);           // open CO2
-    delay(6000);                          // delay 6 sec
+
+    Serial.println("waiting 6 seconds");
+    delay(6000);                          // delay 6 sec            
+                 
+    Serial.println("closing CO2");
     digitalWrite(co2Pin, LOW);            // close CO2
+
+    Serial.println("waiting 6 seconds");
+    delay(6000);
+
+    Serial.println("starting beer fill");
     // start beer fill
     digitalWrite(beerfillPin, HIGH);      // open beer
     pulsecount = 0;                       // reset counter;
@@ -111,6 +134,13 @@ void flowpulse() {
       pulsecount = 0; // zero counter   
       measureflow = false;   
       endfill();      // bottle full.
+
+      //print pulse count every 100th else it floods the serialport with data
+      if (pulsecount%100) {
+        Serial.print("Filling beer pulse count:");
+        Serial.println(pulsecount);
+      }
+      
     }
   }
 }
@@ -118,14 +148,19 @@ void flowpulse() {
 /*------------------------------------------------------------------------------------*/
 
 void endfill() {
+  Serial.print("Ending fill");
   // Stop beer flow:
   measureflow = false;
   analogWrite(flowLED, 0);              // turn off flow light
   digitalWrite(beerfillPin, LOW);       // turn off beer pin
 
+  Serial.print("Waiting 6 seconds");
   // After filling up do this:  
   delay(6000);                          // delay 6 sec
+  Serial.print("Lowering bottle");
   digitalWrite(liftSolenoidPin, LOW);   //  lift solenoid close (lower bottle)
-  delay(3000);                          // give it time to lower.
+  Serial.print("Waiting 6 seconds");
+  delay(6000);                          // give it time to lower.
   disableButton = false;
+  Serial.print("Done. Enabling button again for main loop.");
 }
